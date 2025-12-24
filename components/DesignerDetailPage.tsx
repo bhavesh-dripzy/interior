@@ -199,8 +199,9 @@ export const DesignerDetailPage: React.FC<DesignerDetailPageProps> = ({
                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-black mb-5">Contact {designer.name}</h3>
                <button 
                 onClick={() => onContact(designer)}
-                className="w-full bg-[#1A1A1A] text-white py-3.5 rounded font-bold text-[11px] uppercase tracking-[0.3em] hover:bg-black transition-all flex items-center justify-center gap-2.5 shadow-md"
+                className="w-full bg-[#10b981] text-black py-4 rounded font-bold text-[11px] uppercase tracking-[0.3em] hover:bg-[#34d399] transition-all flex items-center justify-center gap-3 shadow-[0_10px_30px_-10px_rgba(16,185,129,0.5)] group/btn"
                >
+                 <MessageSquare size={18} className="group-hover/btn:scale-110 transition-transform" />
                  Send Message
                </button>
             </div>

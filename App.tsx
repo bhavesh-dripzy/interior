@@ -291,7 +291,7 @@ const App: React.FC = () => {
       case 'rooms':
         return <RoomDesignPage />;
       case 'professionals':
-        return <ProfessionalsPage onDesignerClick={openDesignerDetail} />;
+        return <ProfessionalsPage onDesignerClick={openDesignerDetail} onContactClick={openContactModal} />;
       case 'designer-detail':
         return selectedDesigner ? (
           <DesignerDetailPage 

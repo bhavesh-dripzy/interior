@@ -1,7 +1,0 @@
-{
-  "name": "Copy of Houza",
-  "description": "An AI-first interior design marketplace that connects homeowners with top local designers, featuring visual discovery, instant EMI financing, and smart architectural matching.",
-  "requestFramePermissions": [
-    "camera"
-  ]
-}

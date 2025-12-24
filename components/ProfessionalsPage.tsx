@@ -17,6 +17,7 @@ import { Designer } from '../types';
 
 interface ProfessionalsPageProps {
   onDesignerClick?: (designer: Designer) => void;
+  onContactClick?: (designer: Designer) => void;
 }
 
 const CATEGORIES = [
@@ -28,7 +29,7 @@ const CATEGORIES = [
   'Lighting Design'
 ];
 
-export const ProfessionalsPage: React.FC<ProfessionalsPageProps> = ({ onDesignerClick }) => {
+export const ProfessionalsPage: React.FC<ProfessionalsPageProps> = ({ onDesignerClick, onContactClick }) => {
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isLocationOpen, setIsLocationOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('Interior Design');
@@ -54,6 +55,7 @@ export const ProfessionalsPage: React.FC<ProfessionalsPageProps> = ({ onDesigner
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
+    // Fixed: Corrected typo from removeIntersectionObserver to removeEventListener
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
@@ -254,7 +256,7 @@ export const ProfessionalsPage: React.FC<ProfessionalsPageProps> = ({ onDesigner
                       
                       <div className="flex items-center flex-wrap gap-2 mb-6">
                         <div className="flex items-center gap-1 text-slate-500">
-                           {[...Array(5)].map((_, i) => <Star key={i} size={10} fill={i < Math.floor(designer.rating) ? "#fbbf24" : "none"} strokeWidth={i < Math.floor(designer.rating) ? 0 : 2} className={i < Math.floor(designer.rating) ? 'text-amber-400' : 'text-slate-700'} />)}
+                           {[...Array(5)].map((_, i) => <Star key={i} size={10} fill={i < Math.floor(designer.rating) ? "#facc15" : "none"} strokeWidth={i < Math.floor(designer.rating) ? 0 : 2} className={i < Math.floor(designer.rating) ? 'text-amber-400' : 'text-slate-700'} />)}
                            <span className="ml-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">{designer.reviewsCount} Reviews</span>
                         </div>
                         <div className="w-[1px] h-3 bg-white/10 mx-1 hidden sm:block"></div>
@@ -275,11 +277,11 @@ export const ProfessionalsPage: React.FC<ProfessionalsPageProps> = ({ onDesigner
                          <button 
                            onClick={(e) => {
                              e.stopPropagation();
-                             onDesignerClick?.(designer); 
+                             onContactClick?.(designer); 
                            }}
-                           className="bg-emerald-500 text-black py-3.5 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] hover:bg-emerald-400 transition-all shadow-lg flex items-center justify-center gap-3"
+                           className="bg-[#10b981] text-black py-4 rounded-xl font-black text-[10px] uppercase tracking-[0.25em] hover:bg-[#34d399] transition-all shadow-[0_10px_30px_-10px_rgba(16,185,129,0.5)] flex items-center justify-center gap-3 group/btn"
                          >
-                           <MessageSquare size={16} />
+                           <MessageSquare size={16} className="group-hover/btn:scale-110 transition-transform" />
                            Send Message
                          </button>
                       </div>

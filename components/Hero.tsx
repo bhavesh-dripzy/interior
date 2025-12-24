@@ -21,7 +21,7 @@ export const Hero: React.FC<{ onAction: (id: string) => void }> = ({ onAction })
     <div className="relative z-20 max-w-7xl mx-auto w-full px-6 py-12 text-center">
       <div className="animate-in fade-in slide-in-from-top duration-1000">
         <h1 className="text-3xl lg:text-5xl font-extrabold text-white mb-4 tracking-tight leading-[1.15]">
-          Book Interior designers with <br className="hidden lg:block"/> instant loan approval
+          Find Right Interior designers for <br className="hidden lg:block"/> your dream home
         </h1>
         <p className="text-sm lg:text-base text-slate-400 mb-12 max-w-2xl mx-auto font-medium leading-relaxed opacity-60">
           Discover designs, compare verified local designers, get free quotes — and check instant loan eligibility before you commit.
