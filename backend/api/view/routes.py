@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .designer_view import designer_listing
 from .designer_detail_view import designer_detail
+from .project_detail_view import project_detail
 
 
 @api_view(['GET'])
@@ -22,5 +23,8 @@ urlpatterns = [
     # Designer routes
     path('designers/', designer_listing, name='designer-listing'),
     path('designers/<int:designer_id>/', designer_detail, name='designer-detail'),
+    
+    # Project routes
+    path('projects/<int:project_id>/', project_detail, name='project-detail'),
 ]
 

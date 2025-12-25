@@ -1,6 +1,6 @@
 from django.shortcuts import get_object_or_404
 from django.db.models import Prefetch
-from ..models import Designer, Project, Image
+from ..models import Designer, Project
 from ..serializers.designer_detail_serializer import DesignerDetailSerializer
 
 
@@ -18,18 +18,13 @@ class DesignerDetailService:
         Returns:
             dict: Designer detail data with all projects and images
         """
-        # Optimized queryset: prefetch projects and their images in a single query
-        # This prevents N+1 query problems
+        # Optimized queryset: prefetch projects in a single query
+        # Note: We don't prefetch images here since ProjectBasicSerializer doesn't include them
+        # This prevents N+1 query problems and improves performance
         queryset = Designer.objects.prefetch_related(
             Prefetch(
                 'projects',
-                queryset=Project.objects.order_by('id').prefetch_related(
-                    Prefetch(
-                        'images',
-                        queryset=Image.objects.order_by('id').only('id', 'image_url', 'title', 'project_id'),
-                        to_attr='prefetched_images'
-                    )
-                ),
+                queryset=Project.objects.order_by('id'),
                 to_attr='prefetched_projects'
             )
         )

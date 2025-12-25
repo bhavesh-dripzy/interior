@@ -1,23 +1,13 @@
 from rest_framework import serializers
-from ..models import Designer, Project, Image
+from ..models import Designer, Project
 
 
-class ImageSerializer(serializers.ModelSerializer):
-    """Serializer for Image model in project detail"""
-    
-    class Meta:
-        model = Image
-        fields = ['id', 'image_id', 'title', 'image_url', 'created_at']
-        read_only_fields = ['id', 'created_at']
-
-
-class ProjectDetailSerializer(serializers.ModelSerializer):
-    """Serializer for Project detail within designer detail"""
+class ProjectBasicSerializer(serializers.ModelSerializer):
+    """Serializer for Project basic info within designer detail (without images)"""
     
     # Map fields to match frontend expectations
     name = serializers.CharField(source='project_title', read_only=True)
     thumbnail = serializers.CharField(source='image', read_only=True)
-    images = serializers.SerializerMethodField()
     
     class Meta:
         model = Project
@@ -25,25 +15,14 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             'id',
             'project_id',
             'name',
-            'project_title',
             'location',
             'thumbnail',
-            'image',
             'image_count',
             'project_cost',
             'url',
-            'images',
             'created_at',
         ]
         read_only_fields = ['id', 'created_at']
-    
-    def get_images(self, obj):
-        """Get all image URLs for this project (optimized via prefetch_related)"""
-        # Use prefetched images if available (avoids extra query)
-        if hasattr(obj, 'prefetched_images') and obj.prefetched_images:
-            return [img.image_url for img in obj.prefetched_images]
-        # Fallback: query images if not prefetched
-        return list(obj.images.values_list('image_url', flat=True))
 
 
 class DesignerDetailSerializer(serializers.ModelSerializer):
@@ -57,8 +36,8 @@ class DesignerDetailSerializer(serializers.ModelSerializer):
     priceRange = serializers.CharField(source='typical_job_cost', read_only=True)
     location = serializers.CharField(source='address', read_only=True)
     
-    # Nested serializers
-    projects = ProjectDetailSerializer(many=True, read_only=True)
+    # Nested serializers - use basic serializer (without images)
+    projects = ProjectBasicSerializer(many=True, read_only=True)
     
     # Computed fields for frontend compatibility
     portfolio = serializers.SerializerMethodField()
@@ -72,17 +51,12 @@ class DesignerDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'name',
-            'business_name',
             'description',
-            'about_us',
             'category',
             'location',
-            'address',
             'phone',
-            'phone_number',
             'website',
             'typicalJobCost',
-            'typical_job_cost',
             'priceRange',
             'followers',
             'socials',
