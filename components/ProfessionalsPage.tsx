@@ -10,10 +10,13 @@ import {
   Handshake, 
   MessageSquare,
   Search,
-  X
+  X,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
-import { MOCK_DESIGNERS, CITIES } from '../constants';
+import { CITIES } from '../constants';
 import { Designer } from '../types';
+import { getDesigners, mapApiDesignerToDesigner, ApiError } from '../apiService';
 
 interface ProfessionalsPageProps {
   onDesignerClick?: (designer: Designer) => void;
@@ -36,6 +39,12 @@ export const ProfessionalsPage: React.FC<ProfessionalsPageProps> = ({ onDesigner
   const [selectedLocation, setSelectedLocation] = useState('Delhi NCR');
   const [locationSearch, setLocationSearch] = useState('');
   
+  // API state
+  const [designers, setDesigners] = useState<Designer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [totalResults, setTotalResults] = useState(0);
+  
   const categoryRef = useRef<HTMLDivElement>(null);
   const locationRef = useRef<HTMLDivElement>(null);
 
@@ -43,6 +52,50 @@ export const ProfessionalsPage: React.FC<ProfessionalsPageProps> = ({ onDesigner
   const filteredCities = CITIES.filter(city => 
     city.toLowerCase().includes(locationSearch.toLowerCase())
   );
+
+  // Fetch designers from API
+  const fetchDesigners = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const params: any = {
+        page_size: 20, // Fetch 20 designers per page
+      };
+      
+      // Add category filter if selected (map frontend category to API category)
+      if (selectedCategory && selectedCategory !== 'Interior Design') {
+        params.category = selectedCategory;
+      }
+      
+      // Add search filter for location
+      if (selectedLocation && selectedLocation !== 'Delhi NCR') {
+        params.search = selectedLocation;
+      }
+      
+      const response = await getDesigners(params);
+      
+      // Map API response to frontend Designer type
+      const mappedDesigners = response.data.map(mapApiDesignerToDesigner);
+      setDesigners(mappedDesigners);
+      setTotalResults(response.pagination.total);
+    } catch (err) {
+      console.error('Error fetching designers:', err);
+      const errorMessage = err instanceof ApiError 
+        ? err.message 
+        : 'Failed to load designers. Please try again later.';
+      setError(errorMessage);
+      setDesigners([]);
+      setTotalResults(0);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch designers on component mount
+  useEffect(() => {
+    fetchDesigners();
+  }, []);
 
   // Close dropdowns on click outside
   useEffect(() => {
@@ -55,7 +108,6 @@ export const ProfessionalsPage: React.FC<ProfessionalsPageProps> = ({ onDesigner
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    // Fixed: Corrected typo from removeIntersectionObserver to removeEventListener
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
@@ -184,8 +236,19 @@ export const ProfessionalsPage: React.FC<ProfessionalsPageProps> = ({ onDesigner
             )}
           </div>
 
-          <button className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-10 py-5 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] hover:bg-emerald-500 hover:text-black transition-all w-full md:w-auto shadow-xl">
-            Get Matches
+          <button 
+            onClick={fetchDesigners}
+            disabled={loading}
+            className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-10 py-5 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] hover:bg-emerald-500 hover:text-black transition-all w-full md:w-auto shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                Loading...
+              </>
+            ) : (
+              'Get Matches'
+            )}
           </button>
         </div>
 
@@ -223,7 +286,9 @@ export const ProfessionalsPage: React.FC<ProfessionalsPageProps> = ({ onDesigner
 
           <div className="flex-1">
             <div className="flex items-center justify-between mb-10">
-              <span className="text-slate-600 font-bold text-[10px] tracking-[0.3em] uppercase">3,523 results</span>
+              <span className="text-slate-600 font-bold text-[10px] tracking-[0.3em] uppercase">
+                {loading ? 'Loading...' : `${totalResults.toLocaleString()} results`}
+              </span>
               <div className="flex items-center gap-4">
                 <span className="text-slate-600 text-[9px] font-bold uppercase tracking-widest">Sort by:</span>
                 <button className="bg-white/5 px-4 py-2.5 rounded-xl border border-white/10 flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:bg-white/10 transition-all">
@@ -232,15 +297,63 @@ export const ProfessionalsPage: React.FC<ProfessionalsPageProps> = ({ onDesigner
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {MOCK_DESIGNERS.map((designer) => (
+            {/* Error State */}
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 mb-8 flex items-center gap-4">
+                <AlertCircle className="text-red-400 shrink-0" size={20} />
+                <div>
+                  <h3 className="text-red-400 font-bold text-sm mb-1">Error Loading Designers</h3>
+                  <p className="text-red-300/80 text-xs">{error}</p>
+                  <button
+                    onClick={fetchDesigners}
+                    className="mt-3 text-red-400 hover:text-red-300 text-xs font-bold uppercase tracking-widest underline"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Loading State */}
+            {loading && !error && (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="text-emerald-400 animate-spin" size={32} />
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!loading && !error && designers.length === 0 && (
+              <div className="text-center py-20">
+                <p className="text-slate-400 text-sm font-medium mb-2">No designers found</p>
+                <p className="text-slate-500 text-xs">Try adjusting your filters or search criteria</p>
+              </div>
+            )}
+
+            {/* Designers Grid */}
+            {!loading && !error && designers.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {designers.map((designer) => (
                 <div 
                   key={designer.id} 
                   onClick={() => onDesignerClick?.(designer)}
                   className="bg-black/40 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] overflow-hidden flex flex-col shadow-2xl group hover:border-emerald-500/30 transition-all duration-500 cursor-pointer"
                 >
-                   <div className="relative h-64 overflow-hidden shrink-0">
-                      <img src={designer.portfolio[0]} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" alt={designer.name} />
+                   <div className="relative h-64 overflow-hidden shrink-0 bg-gradient-to-br from-slate-800 to-slate-900">
+                      {designer.portfolio && designer.portfolio.length > 0 && designer.portfolio[0] ? (
+                        <img 
+                          src={designer.portfolio[0]} 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" 
+                          alt={designer.name}
+                          onError={(e) => {
+                            // Fallback to gradient background if image fails to load
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Building2 className="text-slate-600" size={48} />
+                        </div>
+                      )}
                       <div className="absolute top-4 left-4">
                         <div className="bg-emerald-500/90 text-black text-[9px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest backdrop-blur-md shadow-xl border border-emerald-400/30">Houzat Recommended</div>
                       </div>
@@ -288,7 +401,8 @@ export const ProfessionalsPage: React.FC<ProfessionalsPageProps> = ({ onDesigner
                    </div>
                 </div>
               ))}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Bot, User, Loader2, X, Send } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
+// import { GoogleGenAI } from "@google/genai"; // Commented out for now
 
 interface ChatbotProps {
   isOpen: boolean;
@@ -29,18 +29,22 @@ export const Chatbot: React.FC<ChatbotProps> = ({ isOpen, onClose }) => {
     setLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      if (!chatRef.current) {
-        chatRef.current = ai.chats.create({
-          model: 'gemini-3-flash-preview',
-          config: {
-            systemInstruction: 'You are Houzat AI, a premium interior design assistant. Help users discover designs, understand EMI options, find designers, and plan their home renovations. Be professional, helpful, and concise. Use a tone that matches a world-class architectural brand.',
-          }
-        });
-      }
+      // Chatbot functionality commented out for now
+      // const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      // if (!chatRef.current) {
+      //   chatRef.current = ai.chats.create({
+      //     model: 'gemini-3-flash-preview',
+      //     config: {
+      //       systemInstruction: 'You are Houzat AI, a premium interior design assistant. Help users discover designs, understand EMI options, find designers, and plan their home renovations. Be professional, helpful, and concise. Use a tone that matches a world-class architectural brand.',
+      //     }
+      //   });
+      // }
+      // 
+      // const response = await chatRef.current.sendMessage({ message: userMsg });
+      // setMessages(prev => [...prev, { role: 'ai', text: response.text }]);
       
-      const response = await chatRef.current.sendMessage({ message: userMsg });
-      setMessages(prev => [...prev, { role: 'ai', text: response.text }]);
+      // Mock response for now
+      setMessages(prev => [...prev, { role: 'ai', text: "Chatbot functionality is temporarily disabled." }]);
     } catch (err) {
       setMessages(prev => [...prev, { role: 'ai', text: "I'm having trouble connecting right now. Please try again later." }]);
     } finally {

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Star, 
   Share2, 
@@ -13,25 +13,98 @@ import {
   ArrowLeft,
   Image as ImageIcon,
   MessageSquare,
-  PenLine
+  PenLine,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { Designer, Project } from '../types';
+import { getDesignerDetail, mapApiDesignerDetailToDesigner, ApiError } from '../apiService';
 
 interface DesignerDetailPageProps {
-  designer: Designer;
+  designerId: string;
   onBack: () => void;
   onContact: (designer: Designer) => void;
   onProjectClick?: (project: Project) => void;
 }
 
 export const DesignerDetailPage: React.FC<DesignerDetailPageProps> = ({ 
-  designer, 
+  designerId, 
   onBack, 
   onContact,
   onProjectClick
 }) => {
   const [activeTab, setActiveTab] = useState('About Us');
+  const [designer, setDesigner] = useState<Designer | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const tabs = ['About Us', 'Projects', 'Business', 'Credentials', 'Reviews', 'Ideabooks'];
+
+  // Fetch designer detail from API
+  useEffect(() => {
+    const fetchDesignerDetail = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const response = await getDesignerDetail(designerId);
+        const mappedDesigner = mapApiDesignerDetailToDesigner(response.data);
+        setDesigner(mappedDesigner);
+      } catch (err) {
+        console.error('Error fetching designer detail:', err);
+        const errorMessage = err instanceof ApiError 
+          ? err.message 
+          : 'Failed to load designer details. Please try again later.';
+        setError(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (designerId) {
+      fetchDesignerDetail();
+    }
+  }, [designerId]);
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white text-[#333] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="text-emerald-500 animate-spin mx-auto mb-4" size={32} />
+          <p className="text-slate-600 text-sm">Loading designer details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !designer) {
+    return (
+      <div className="min-h-screen bg-white text-[#333]">
+        <div className="fixed top-[88px] left-0 right-0 z-50 px-6 py-4 pointer-events-none">
+          <button 
+            onClick={onBack}
+            className="pointer-events-auto bg-white/90 backdrop-blur-md border border-slate-200 p-2.5 rounded-full shadow-lg text-slate-700 hover:text-black hover:bg-white transition-all"
+          >
+            <ArrowLeft size={18} />
+          </button>
+        </div>
+        <div className="max-w-7xl mx-auto px-6 pb-20 pt-28 flex items-center justify-center min-h-[60vh]">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-8 max-w-md text-center">
+            <AlertCircle className="text-red-500 mx-auto mb-4" size={32} />
+            <h3 className="text-red-700 font-bold text-lg mb-2">Error Loading Designer</h3>
+            <p className="text-red-600 text-sm mb-4">{error || 'Designer not found'}</p>
+            <button
+              onClick={onBack}
+              className="text-red-600 hover:text-red-700 text-sm font-bold underline"
+            >
+              Go Back
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white text-[#333]">
@@ -47,8 +120,17 @@ export const DesignerDetailPage: React.FC<DesignerDetailPageProps> = ({
 
       <div className="max-w-7xl mx-auto px-6 pb-20 pt-16">
         {/* Hero Section - Reduced Height and Adjusted Margin */}
-        <div className="relative w-full h-[280px] md:h-[420px] rounded-2xl overflow-hidden mb-8 mt-12 shadow-sm">
-          <img src={designer.portfolio[0]} className="w-full h-full object-cover" alt={designer.name} />
+        <div className="relative w-full h-[280px] md:h-[420px] rounded-2xl overflow-hidden mb-8 mt-12 shadow-sm bg-gradient-to-br from-slate-200 to-slate-300">
+          {designer.portfolio && designer.portfolio.length > 0 && designer.portfolio[0] ? (
+            <img 
+              src={designer.portfolio[0]} 
+              className="w-full h-full object-cover" 
+              alt={designer.name}
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          ) : null}
           <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
         </div>
 
@@ -57,7 +139,18 @@ export const DesignerDetailPage: React.FC<DesignerDetailPageProps> = ({
           <div className="flex-1">
             <div className="flex items-start gap-5 mb-8">
               <div className="w-20 h-20 rounded-full border border-slate-100 bg-slate-50 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
-                 <img src={designer.portfolio[0]} className="w-full h-full object-cover" alt="" />
+                 {designer.portfolio && designer.portfolio.length > 0 && designer.portfolio[0] ? (
+                   <img 
+                     src={designer.portfolio[0]} 
+                     className="w-full h-full object-cover" 
+                     alt=""
+                     onError={(e) => {
+                       e.currentTarget.style.display = 'none';
+                     }}
+                   />
+                 ) : (
+                   <div className="w-full h-full bg-slate-200"></div>
+                 )}
               </div>
               <div className="flex-1 pt-1">
                 <h1 className="text-2xl font-bold mb-1 uppercase tracking-tight">{designer.name}</h1>
@@ -119,15 +212,29 @@ export const DesignerDetailPage: React.FC<DesignerDetailPageProps> = ({
 
               <section id="projects">
                 <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-800 mb-6">{designer.projects?.length || 0} Projects</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {designer.projects?.map(project => (
+                {designer.projects && designer.projects.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {designer.projects.map(project => (
                     <div 
                       key={project.id} 
                       className="group cursor-pointer"
                       onClick={() => onProjectClick?.(project)}
                     >
                       <div className="relative aspect-[4/3] rounded-xl overflow-hidden mb-3 bg-slate-50 border border-slate-100">
-                        <img src={project.thumbnail} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={project.name} />
+                        {project.thumbnail ? (
+                          <img 
+                            src={project.thumbnail} 
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                            alt={project.name}
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-slate-200 flex items-center justify-center">
+                            <ImageIcon size={24} className="text-slate-400" />
+                          </div>
+                        )}
                         <div className="absolute bottom-2.5 left-2.5 bg-black/70 backdrop-blur-md text-white px-2 py-1 rounded-md flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest">
                            <ImageIcon size={12} /> {project.imageCount}
                         </div>
@@ -142,8 +249,11 @@ export const DesignerDetailPage: React.FC<DesignerDetailPageProps> = ({
                         <button className="p-1.5 text-slate-300 hover:text-black transition-colors"><Share2 size={16} /></button>
                       </div>
                     </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-500 text-sm">No projects available.</p>
+                )}
               </section>
 
               <section id="details" className="pt-8 border-t border-slate-100">
@@ -198,7 +308,7 @@ export const DesignerDetailPage: React.FC<DesignerDetailPageProps> = ({
             <div className="sticky top-28 bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-black mb-5">Contact {designer.name}</h3>
                <button 
-                onClick={() => onContact(designer)}
+                onClick={() => designer && onContact(designer)}
                 className="w-full bg-[#10b981] text-black py-4 rounded font-bold text-[11px] uppercase tracking-[0.3em] hover:bg-[#34d399] transition-all flex items-center justify-center gap-3 shadow-[0_10px_30px_-10px_rgba(16,185,129,0.5)] group/btn"
                >
                  <MessageSquare size={18} className="group-hover/btn:scale-110 transition-transform" />

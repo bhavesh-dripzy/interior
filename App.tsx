@@ -17,7 +17,7 @@ import { ProfessionalsPage } from './components/ProfessionalsPage';
 import { RoomDesignPage } from './components/RoomDesignPage';
 import { DesignerDetailPage } from './components/DesignerDetailPage';
 import { ProjectDetailPage } from './components/ProjectDetailPage';
-import { Chatbot } from './components/Chatbot';
+// import { Chatbot } from './components/Chatbot'; // Commented out for now
 import { ContactModal } from './components/ContactModal';
 import { Logo } from './components/Logo';
 import { Badge } from './components/Badge';
@@ -30,10 +30,12 @@ const App: React.FC = () => {
   const [searchImage, setSearchImage] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [selectedDesigner, setSelectedDesigner] = useState<Designer | null>(null);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  // const [isChatOpen, setIsChatOpen] = useState(false); // Commented out - chatbot disabled
+  const [selectedDesignerId, setSelectedDesignerId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  // Keep designer object for contact modal (will be fetched when needed)
+  const [contactDesigner, setContactDesigner] = useState<Designer | null>(null);
 
   // Form states
   const [selectedRoom, setSelectedRoom] = useState('Living');
@@ -77,26 +79,27 @@ const App: React.FC = () => {
       return;
     }
     setCurrentPage(page as any);
-    setSelectedDesigner(null);
-    setSelectedProject(null);
+    setSelectedDesignerId(null);
+    setSelectedProjectId(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const openDesignerDetail = (designer: Designer) => {
-    setSelectedDesigner(designer);
-    setSelectedProject(null);
+    setSelectedDesignerId(designer.id);
+    setSelectedProjectId(null);
     setCurrentPage('designer-detail');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const openProjectDetail = (project: Project) => {
-    setSelectedProject(project);
+  const openProjectDetail = (project: Project, designerId: string) => {
+    setSelectedProjectId(project.id);
+    setSelectedDesignerId(designerId);
     setCurrentPage('project-detail');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const openContactModal = (designer: Designer) => {
-    setSelectedDesigner(designer);
+    setContactDesigner(designer);
     setIsContactModalOpen(true);
   };
 
@@ -293,19 +296,23 @@ const App: React.FC = () => {
       case 'professionals':
         return <ProfessionalsPage onDesignerClick={openDesignerDetail} onContactClick={openContactModal} />;
       case 'designer-detail':
-        return selectedDesigner ? (
+        return selectedDesignerId ? (
           <DesignerDetailPage 
-            designer={selectedDesigner} 
+            designerId={selectedDesignerId} 
             onBack={() => setCurrentPage('professionals')} 
             onContact={openContactModal}
-            onProjectClick={openProjectDetail}
+            onProjectClick={(project) => {
+              if (selectedDesignerId) {
+                openProjectDetail(project, selectedDesignerId);
+              }
+            }}
           />
         ) : null;
       case 'project-detail':
-        return (selectedDesigner && selectedProject) ? (
+        return (selectedDesignerId && selectedProjectId) ? (
           <ProjectDetailPage 
-            designer={selectedDesigner}
-            project={selectedProject}
+            designerId={selectedDesignerId}
+            projectId={selectedProjectId}
             onBack={() => setCurrentPage('designer-detail')}
             onContact={openContactModal}
             onOtherProjectClick={openProjectDetail}
@@ -353,6 +360,7 @@ const App: React.FC = () => {
         </div>
       </footer>
 
+      {/* Chatbot button commented out for now
       <div className="fixed bottom-8 right-6 md:right-8 z-[200]">
         <button 
           onClick={() => setIsChatOpen(!isChatOpen)}
@@ -368,15 +376,16 @@ const App: React.FC = () => {
           )}
         </button>
       </div>
+      */}
 
-      <Chatbot isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+      {/* <Chatbot isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} /> */}
 
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
 
       <ContactModal 
         isOpen={isContactModalOpen} 
         onClose={() => setIsContactModalOpen(false)} 
-        designer={selectedDesigner} 
+        designer={contactDesigner} 
       />
 
       {activeModal === 'search' && (

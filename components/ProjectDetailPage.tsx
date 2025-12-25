@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Star, 
   Share2, 
@@ -8,27 +8,115 @@ import {
   MapPin,
   Search,
   Users,
-  ChevronRight
+  ChevronRight,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { Designer, Project } from '../types';
+import { 
+  getProjectDetail, 
+  getDesignerDetail,
+  mapApiProjectDetailToProject,
+  mapApiDesignerDetailToDesigner,
+  ApiError 
+} from '../apiService';
 
 interface ProjectDetailPageProps {
-  designer: Designer;
-  project: Project;
+  designerId: string;
+  projectId: string;
   onBack: () => void;
   onContact: (designer: Designer) => void;
-  onOtherProjectClick: (project: Project) => void;
+  onOtherProjectClick: (project: Project, designerId: string) => void;
 }
 
 export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ 
-  designer, 
-  project, 
+  designerId,
+  projectId, 
   onBack, 
   onContact,
   onOtherProjectClick
 }) => {
   const [activeTab, setActiveTab] = useState('Projects');
+  const [designer, setDesigner] = useState<Designer | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const tabs = ['About Us', 'Projects', 'Business', 'Credentials', 'Reviews', 'Ideabooks'];
+
+  // Fetch project and designer details from API
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        // Fetch both project and designer in parallel
+        const [projectResponse, designerResponse] = await Promise.all([
+          getProjectDetail(projectId),
+          getDesignerDetail(designerId)
+        ]);
+        
+        const mappedProject = mapApiProjectDetailToProject(projectResponse.data);
+        const mappedDesigner = mapApiDesignerDetailToDesigner(designerResponse.data);
+        
+        setProject(mappedProject);
+        setDesigner(mappedDesigner);
+      } catch (err) {
+        console.error('Error fetching project detail:', err);
+        const errorMessage = err instanceof ApiError 
+          ? err.message 
+          : 'Failed to load project details. Please try again later.';
+        setError(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (projectId && designerId) {
+      fetchData();
+    }
+  }, [projectId, designerId]);
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white text-[#333] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="text-emerald-500 animate-spin mx-auto mb-4" size={32} />
+          <p className="text-slate-600 text-sm">Loading project details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !project || !designer) {
+    return (
+      <div className="min-h-screen bg-white text-[#333]">
+        <div className="fixed top-[88px] left-0 right-0 z-50 px-6 py-4 pointer-events-none">
+          <button 
+            onClick={onBack}
+            className="pointer-events-auto bg-white/90 backdrop-blur-md border border-slate-200 p-2.5 rounded-full shadow-lg text-slate-700 hover:text-black hover:bg-white transition-all"
+          >
+            <ArrowLeft size={18} />
+          </button>
+        </div>
+        <div className="max-w-7xl mx-auto px-6 pb-20 pt-28 flex items-center justify-center min-h-[60vh]">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-8 max-w-md text-center">
+            <AlertCircle className="text-red-500 mx-auto mb-4" size={32} />
+            <h3 className="text-red-700 font-bold text-lg mb-2">Error Loading Project</h3>
+            <p className="text-red-600 text-sm mb-4">{error || 'Project not found'}</p>
+            <button
+              onClick={onBack}
+              className="text-red-600 hover:text-red-700 text-sm font-bold underline"
+            >
+              Go Back
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white text-[#333]">
@@ -50,7 +138,18 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
           <div className="p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
             <div className="flex items-center gap-6">
               <div className="w-20 h-20 rounded-full border border-slate-100 bg-slate-50 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
-                 <img src={designer.portfolio[0]} className="w-full h-full object-cover" alt="" />
+                 {designer.portfolio && designer.portfolio.length > 0 && designer.portfolio[0] ? (
+                   <img 
+                     src={designer.portfolio[0]} 
+                     className="w-full h-full object-cover" 
+                     alt=""
+                     onError={(e) => {
+                       e.currentTarget.style.display = 'none';
+                     }}
+                   />
+                 ) : (
+                   <div className="w-full h-full bg-slate-200"></div>
+                 )}
               </div>
               <div>
                 <h1 className="text-2xl font-bold uppercase tracking-tight">{designer.name}</h1>
@@ -109,16 +208,36 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
             </button>
 
             {/* Gallery Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-               {(project.images || [project.thumbnail]).map((img, i) => (
+            {project.images && project.images.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {project.images.map((img, i) => (
                  <div key={i} className="flex flex-col gap-3 group">
                    <div className="rounded-xl overflow-hidden aspect-[4/3] bg-slate-50 border border-slate-100">
                      <img src={img} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" alt={`${project.name} ${i}`} />
                    </div>
-                   <p className="text-[12px] font-bold text-slate-600 mb-8 group-hover:text-black transition-colors uppercase tracking-widest">Mohan's House</p>
+                   <p className="text-[12px] font-bold text-slate-600 mb-8 group-hover:text-black transition-colors uppercase tracking-widest">{project.name}</p>
                  </div>
-               ))}
-            </div>
+                ))}
+              </div>
+            ) : project.thumbnail ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="flex flex-col gap-3 group">
+                  <div className="rounded-xl overflow-hidden aspect-[4/3] bg-slate-50 border border-slate-100">
+                    <img 
+                      src={project.thumbnail} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" 
+                      alt={project.name}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                  <p className="text-[12px] font-bold text-slate-600 mb-8 group-hover:text-black transition-colors uppercase tracking-widest">{project.name}</p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-slate-500 text-sm">No images available for this project.</p>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -127,7 +246,7 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
             <div className="bg-[#F8F9FA] border border-slate-100 rounded-2xl p-8 text-center shadow-sm">
                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-800 mb-6">Contact {designer.name}</h3>
                <button 
-                onClick={() => onContact(designer)}
+                onClick={() => designer && onContact(designer)}
                 className="w-full bg-[#1A1A1A] text-white py-4 rounded-md font-bold text-sm uppercase tracking-[0.2em] hover:bg-black transition-all flex items-center justify-center gap-3 shadow-lg"
                >
                  Send Message
@@ -187,7 +306,7 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
                   {designer.projects?.map(p => (
                     <li 
                       key={p.id}
-                      onClick={() => onOtherProjectClick(p)}
+                      onClick={() => onOtherProjectClick(p, designerId)}
                       className={`text-[13px] font-bold transition-all cursor-pointer flex items-center justify-between group ${p.id === project.id ? 'text-black' : 'text-slate-500 hover:text-black'}`}
                     >
                       <span className="truncate pr-4">{p.name}</span>

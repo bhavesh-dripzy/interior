@@ -1,9 +1,20 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+// Commented out chatbot/Gemini integration for now
+// import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const analyzeDesignImage = async (base64Image: string) => {
+  // Temporarily disabled - returns mock data
+  return {
+    roomType: "Living Room",
+    style: "Modern",
+    complexity: 5,
+    estimatedPrice: "₹5,00,000 - ₹10,00,000",
+    keyFeatures: ["Modern design", "Clean lines"]
+  };
+  
+  /* Original implementation - commented out
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: {
@@ -28,9 +39,14 @@ export const analyzeDesignImage = async (base64Image: string) => {
   });
   
   return JSON.parse(response.text);
+  */
 };
 
 export const generateSmartQuotes = async (requirement: any) => {
+  // Temporarily disabled - returns mock data
+  return [];
+  
+  /* Original implementation - commented out
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: `Based on this user requirement: ${JSON.stringify(requirement)}, generate 3 unique and realistic response quotes from professional interior designers. Include estimated cost, timeline, and a professional message.`,
@@ -53,4 +69,5 @@ export const generateSmartQuotes = async (requirement: any) => {
   });
 
   return JSON.parse(response.text);
+  */
 };
