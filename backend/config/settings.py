@@ -75,11 +75,25 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 # Database configuration
-# Temporarily using SQLite until PostgreSQL is set up
-# Set USE_POSTGRESQL=True in .env to use PostgreSQL
-USE_POSTGRESQL = os.getenv('USE_POSTGRESQL', 'False') == 'True'
+# Supports MySQL, PostgreSQL, and SQLite
+# Set DB_ENGINE=mysql, postgresql, or sqlite in .env (default: mysql)
+DB_ENGINE = os.getenv('DB_ENGINE', 'mysql')
 
-if USE_POSTGRESQL:
+if DB_ENGINE == 'mysql':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.getenv('DB_NAME', 'houzatt_db'),
+            'USER': os.getenv('DB_USER', 'root'),
+            'PASSWORD': os.getenv('DB_PASSWORD', ''),
+            'HOST': os.getenv('DB_HOST', 'localhost'),
+            'PORT': os.getenv('DB_PORT', '3306'),
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+            },
+        }
+    }
+elif DB_ENGINE == 'postgresql':
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',

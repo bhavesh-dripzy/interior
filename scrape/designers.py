@@ -17,7 +17,20 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # Import Django models
 from api.models import Designer, Project, Image
 
-URL = "https://www.houzz.in/pro/gagandeep-kaur44/homez-designer"
+# List of designer profile URLs to scrape
+DESIGNER_URLS = [
+    "https://www.houzz.in/pro/hocdesignarch/hoc-design-arch",
+    "https://www.houzz.in/pro/amudesign/amusing-interior",
+    "https://www.houzz.in/pro/poojabansal/denotation-design",
+    "https://www.houzz.in/pro/designindiankitchen/design-indian-kitchen",
+    "https://www.houzz.in/pro/theekadesigns/the-eka-designs",
+    "https://www.houzz.in/pro/furnishmearchitects/furnish-me-architects",
+    "https://www.houzz.in/pro/lineupinteriors/line-up-interior-designer",
+    "https://www.houzz.in/pro/anmolwahiphotography/anmol-wahi-photography",
+    "https://www.houzz.in/pro/interiors-tweak/tweak-interiors",
+    # Original URL for reference
+    # "https://www.houzz.in/pro/gagandeep-kaur44/homez-designer",
+]
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
@@ -137,8 +150,11 @@ def save_to_database(data):
     details = data.get("details", {})
     business_details = data.get("business_details", {})
     
+    # Use business name or website as unique identifier
+    business_name = business_details.get("Business Name") or "Unknown"
+    
     designer, created = Designer.objects.update_or_create(
-        business_name=business_details.get("Business Name", "Unknown"),
+        business_name=business_name,
         defaults={
             "about_us": data.get("about_us"),
             "services_provided": details.get("Services Provided"),
@@ -214,13 +230,15 @@ def save_to_database(data):
 
 
 # =========================
-# MAIN SCRAPER
+# SCRAPE SINGLE DESIGNER PROFILE
 # =========================
 
-def main():
-    print("🚀 Starting scraper...")
+def scrape_designer_profile(url):
+    """Scrape a single designer profile and return the data"""
+    print(f"\n📋 Scraping: {url}")
     
-    response = requests.get(URL, headers=HEADERS)
+    response = requests.get(url, headers=HEADERS, timeout=30)
+    response.raise_for_status()  # Raise an error if the request failed
     soup = BeautifulSoup(response.text, "html.parser")
 
     output = {}
@@ -313,20 +331,82 @@ def main():
 
     output["business_details"] = business_details
 
-    # =========================
-    # SAVE TO DATABASE
-    # =========================
-    print("\n💾 Saving to database...")
-    designer = save_to_database(output)
-    
-    # Also save JSON for backup
-    with open("houzz_profile.json", "w", encoding="utf-8") as f:
-        json.dump(output, f, ensure_ascii=False, indent=2)
+    return output
 
-    print("\n✅ Scraping complete!")
-    print(f"✅ Designer saved: {designer.business_name}")
-    print(f"✅ File saved: houzz_profile.json")
-    print(f"✅ Database updated successfully")
+
+# =========================
+# MAIN SCRAPER
+# =========================
+
+def main():
+    print("🚀 Starting scraper for multiple designers...")
+    print(f"📊 Total URLs to process: {len(DESIGNER_URLS)}\n")
+    
+    results = []
+    failed_urls = []
+    
+    for idx, url in enumerate(DESIGNER_URLS, 1):
+        try:
+            print(f"\n{'='*60}")
+            print(f"Processing {idx}/{len(DESIGNER_URLS)}")
+            print(f"{'='*60}")
+            
+            # Scrape the profile
+            output = scrape_designer_profile(url)
+            
+            # Save to database
+            print("\n💾 Saving to database...")
+            designer = save_to_database(output)
+            
+            results.append({
+                "url": url,
+                "designer": designer.business_name,
+                "projects_count": len(output.get("projects", [])),
+                "status": "success"
+            })
+            
+            print(f"\n✅ Successfully saved: {designer.business_name}")
+            
+        except Exception as e:
+            error_msg = str(e)
+            print(f"\n❌ Error processing {url}: {error_msg}")
+            failed_urls.append({"url": url, "error": error_msg})
+            results.append({
+                "url": url,
+                "status": "failed",
+                "error": error_msg
+            })
+            continue
+    
+    # Print summary
+    print(f"\n{'='*60}")
+    print("📊 SCRAPING SUMMARY")
+    print(f"{'='*60}")
+    print(f"✅ Successful: {len([r for r in results if r.get('status') == 'success'])}")
+    print(f"❌ Failed: {len(failed_urls)}")
+    
+    if results:
+        total_projects = sum(r.get('projects_count', 0) for r in results if r.get('status') == 'success')
+        print(f"📁 Total projects scraped: {total_projects}")
+    
+    if failed_urls:
+        print(f"\n❌ Failed URLs:")
+        for failed in failed_urls:
+            print(f"  - {failed['url']}: {failed['error']}")
+    
+    # Save summary JSON
+    summary = {
+        "total_urls": len(DESIGNER_URLS),
+        "successful": len([r for r in results if r.get('status') == 'success']),
+        "failed": len(failed_urls),
+        "results": results
+    }
+    
+    with open("scraping_summary.json", "w", encoding="utf-8") as f:
+        json.dump(summary, f, ensure_ascii=False, indent=2)
+    
+    print(f"\n✅ Summary saved to: scraping_summary.json")
+    print(f"\n🎉 All done!")
 
 
 if __name__ == "__main__":
