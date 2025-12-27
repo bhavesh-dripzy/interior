@@ -147,7 +147,9 @@ jobs:
     - name: Deploy Backend
       run: |
         cd interior/backend
+        # Create archive from parent directory to avoid "file changed" warnings
         tar -czf backend-deploy.tar.gz \
+          --warning=no-file-changed \
           --exclude='venv' \
           --exclude='__pycache__' \
           --exclude='*.pyc' \
@@ -155,6 +157,10 @@ jobs:
           --exclude='db.sqlite3' \
           --exclude='media' \
           --exclude='staticfiles' \
+          --exclude='*.log' \
+          --exclude='.DS_Store' \
+          --exclude='*.swp' \
+          --exclude='*.tmp' \
           .
         
         echo "📤 Uploading backend files..."
