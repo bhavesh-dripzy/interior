@@ -52,25 +52,25 @@ jobs:
         # Write SSH key and fix formatting (handle single-line paste from GitHub Secrets)
         echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key_temp
         
-        # Use Python to properly format the key
-        python3 -c "
-import sys, re, os
-key = open(os.path.expanduser('~/.ssh/deploy_key_temp')).read().replace('\n', '').replace('\r', '').strip()
-begin_match = re.search(r'-----BEGIN[^-]+-----', key)
-end_match = re.search(r'-----END[^-]+-----', key)
-if not begin_match or not end_match:
-    print('❌ Could not find BEGIN or END markers', file=sys.stderr)
-    sys.exit(1)
-begin_line = key[begin_match.start():begin_match.end()]
-base64_content = key[begin_match.end():end_match.start()]
-end_line = key[end_match.start():end_match.end()]
-formatted_key = begin_line + '\n'
-for i in range(0, len(base64_content), 64):
-    formatted_key += base64_content[i:i+64] + '\n'
-formatted_key += end_line + '\n'
-open(os.path.expanduser('~/.ssh/deploy_key'), 'w').write(formatted_key)
-print('✅ SSH key formatted and written')
-"
+        # Create Python script to format the key
+        printf 'import sys, re, os\n' > /tmp/format_key.py
+        printf 'key = open(os.path.expanduser("~/.ssh/deploy_key_temp")).read().replace("\\n", "").replace("\\r", "").strip()\n' >> /tmp/format_key.py
+        printf 'begin_match = re.search(r"-----BEGIN[^-]+-----", key)\n' >> /tmp/format_key.py
+        printf 'end_match = re.search(r"-----END[^-]+-----", key)\n' >> /tmp/format_key.py
+        printf 'if not begin_match or not end_match:\n' >> /tmp/format_key.py
+        printf '    print("❌ Could not find BEGIN or END markers", file=sys.stderr)\n' >> /tmp/format_key.py
+        printf '    sys.exit(1)\n' >> /tmp/format_key.py
+        printf 'begin_line = key[begin_match.start():begin_match.end()]\n' >> /tmp/format_key.py
+        printf 'base64_content = key[begin_match.end():end_match.start()]\n' >> /tmp/format_key.py
+        printf 'end_line = key[end_match.start():end_match.end()]\n' >> /tmp/format_key.py
+        printf 'formatted_key = begin_line + "\\n"\n' >> /tmp/format_key.py
+        printf 'for i in range(0, len(base64_content), 64):\n' >> /tmp/format_key.py
+        printf '    formatted_key += base64_content[i:i+64] + "\\n"\n' >> /tmp/format_key.py
+        printf 'formatted_key += end_line + "\\n"\n' >> /tmp/format_key.py
+        printf 'open(os.path.expanduser("~/.ssh/deploy_key"), "w").write(formatted_key)\n' >> /tmp/format_key.py
+        printf 'print("✅ SSH key formatted and written")\n' >> /tmp/format_key.py
+        
+        python3 /tmp/format_key.py
         
         chmod 600 ~/.ssh/deploy_key
         
