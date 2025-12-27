@@ -73,11 +73,7 @@ const App: React.FC = () => {
     setAnalysisResult(null);
   };
 
-  const onNavigate = (page: 'home' | 'rooms' | 'professionals' | 'ai-matching') => {
-    if (page === 'ai-matching') {
-      setActiveModal('search');
-      return;
-    }
+  const onNavigate = (page: 'home' | 'rooms' | 'professionals') => {
     setCurrentPage(page as any);
     setSelectedDesignerId(null);
     setSelectedProjectId(null);
