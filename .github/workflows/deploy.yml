@@ -52,8 +52,8 @@ jobs:
         # Write SSH key and fix formatting (handle single-line paste from GitHub Secrets)
         echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key_temp
         
-        # Use Python to properly format the key
-        python3 << 'EOF'
+        # Use Python to properly format the key - write script to file first
+        cat > /tmp/format_key.py << 'PYEOF'
 import sys
 import re
 import os
@@ -88,7 +88,9 @@ with open(os.path.expanduser('~/.ssh/deploy_key'), 'w') as f:
     f.write(formatted_key)
 
 print('✅ SSH key formatted and written')
-EOF
+PYEOF
+        
+        python3 /tmp/format_key.py
         
         chmod 600 ~/.ssh/deploy_key
         
