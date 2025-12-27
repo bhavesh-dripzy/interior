@@ -1,5 +1,6 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { 
   X,
   Camera,
@@ -24,15 +25,12 @@ import { Badge } from './components/Badge';
 import { analyzeDesignImage } from './geminiService';
 import { Designer, Project } from './types';
 
-const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<'home' | 'rooms' | 'professionals' | 'designer-detail' | 'project-detail'>('home');
+const AppContent: React.FC = () => {
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [searchImage, setSearchImage] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   // const [isChatOpen, setIsChatOpen] = useState(false); // Commented out - chatbot disabled
-  const [selectedDesignerId, setSelectedDesignerId] = useState<string | null>(null);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   // Keep designer object for contact modal (will be fetched when needed)
   const [contactDesigner, setContactDesigner] = useState<Designer | null>(null);
@@ -73,25 +71,29 @@ const App: React.FC = () => {
     setAnalysisResult(null);
   };
 
-  const onNavigate = (page: 'home' | 'rooms' | 'professionals') => {
-    setCurrentPage(page as any);
-    setSelectedDesignerId(null);
-    setSelectedProjectId(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Scroll to top on route change
+  useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [location.pathname]);
+
+  const onNavigate = (page: 'home' | 'rooms' | 'professionals') => {
+    const routes: Record<string, string> = {
+      'home': '/',
+      'rooms': '/rooms',
+      'professionals': '/professionals'
+    };
+    navigate(routes[page]);
   };
 
   const openDesignerDetail = (designer: Designer) => {
-    setSelectedDesignerId(designer.id);
-    setSelectedProjectId(null);
-    setCurrentPage('designer-detail');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigate(`/designers/${designer.id}`);
   };
 
   const openProjectDetail = (project: Project, designerId: string) => {
-    setSelectedProjectId(project.id);
-    setSelectedDesignerId(designerId);
-    setCurrentPage('project-detail');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigate(`/designers/${designerId}/projects/${project.id}`);
   };
 
   const openContactModal = (designer: Designer) => {
@@ -99,15 +101,13 @@ const App: React.FC = () => {
     setIsContactModalOpen(true);
   };
 
-  const renderContent = () => {
-    switch (currentPage) {
-      case 'home':
-        return (
-          <>
-            <Hero onAction={(id) => setActiveModal(id)} />
-            
-            {/* GET INSPIRED SECTION - COMPACT RE-DESIGN */}
-            <section className="bg-[#0c0c0c] py-16 px-6">
+  // Home page component
+  const HomePage: React.FC = () => (
+    <>
+      <Hero onAction={(id) => setActiveModal(id)} />
+      
+      {/* GET INSPIRED SECTION - COMPACT RE-DESIGN */}
+      <section className="bg-[#0c0c0c] py-16 px-6">
               <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-12 lg:gap-20 items-start">
                 
                 {/* Left Column: Form */}
@@ -285,45 +285,51 @@ const App: React.FC = () => {
                 </div>
               </div>
             </section>
-          </>
-        );
-      case 'rooms':
-        return <RoomDesignPage />;
-      case 'professionals':
-        return <ProfessionalsPage onDesignerClick={openDesignerDetail} onContactClick={openContactModal} />;
-      case 'designer-detail':
-        return selectedDesignerId ? (
-          <DesignerDetailPage 
-            designerId={selectedDesignerId} 
-            onBack={() => setCurrentPage('professionals')} 
-            onContact={openContactModal}
-            onProjectClick={(project) => {
-              if (selectedDesignerId) {
-                openProjectDetail(project, selectedDesignerId);
-              }
-            }}
-          />
-        ) : null;
-      case 'project-detail':
-        return (selectedDesignerId && selectedProjectId) ? (
-          <ProjectDetailPage 
-            designerId={selectedDesignerId}
-            projectId={selectedProjectId}
-            onBack={() => setCurrentPage('designer-detail')}
-            onContact={openContactModal}
-            onOtherProjectClick={openProjectDetail}
-          />
-        ) : null;
-      default:
-        return null;
-    }
+    </>
+  );
+
+  // Designer detail wrapper component
+  const DesignerDetailWrapper: React.FC = () => {
+    const { id } = useParams<{ id: string }>();
+    return id ? (
+      <DesignerDetailPage 
+        designerId={id} 
+        onBack={() => navigate('/professionals')} 
+        onContact={openContactModal}
+        onProjectClick={(project) => {
+          navigate(`/designers/${id}/projects/${project.id}`);
+        }}
+      />
+    ) : null;
+  };
+
+  // Project detail wrapper component
+  const ProjectDetailWrapper: React.FC = () => {
+    const { designerId, projectId } = useParams<{ designerId: string; projectId: string }>();
+    return (designerId && projectId) ? (
+      <ProjectDetailPage 
+        designerId={designerId}
+        projectId={projectId}
+        onBack={() => navigate(`/designers/${designerId}`)}
+        onContact={openContactModal}
+        onOtherProjectClick={(project) => {
+          navigate(`/designers/${designerId}/projects/${project.id}`);
+        }}
+      />
+    ) : null;
   };
 
   return (
     <div className="min-h-screen bg-[#0c0c0c] text-white">
       <Navbar onNavigate={onNavigate} />
       
-      {renderContent()}
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/rooms" element={<RoomDesignPage />} />
+        <Route path="/professionals" element={<ProfessionalsPage onDesignerClick={openDesignerDetail} onContactClick={openContactModal} />} />
+        <Route path="/designers/:id" element={<DesignerDetailWrapper />} />
+        <Route path="/designers/:designerId/projects/:projectId" element={<ProjectDetailWrapper />} />
+      </Routes>
 
       <footer className="bg-black text-white py-24 px-6 border-t border-white/5">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-16 text-center md:text-left">
@@ -433,6 +439,10 @@ const App: React.FC = () => {
       )}
     </div>
   );
+};
+
+const App: React.FC = () => {
+  return <AppContent />;
 };
 
 export default App;
