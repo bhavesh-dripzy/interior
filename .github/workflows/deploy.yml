@@ -52,17 +52,51 @@ jobs:
         # Write SSH key and fix formatting (handle single-line paste from GitHub Secrets)
         echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key_temp
         
-        # Create Python script to format the key
+        # Create Python script to format the key (more robust pattern matching)
         printf 'import sys, re, os\n' > /tmp/format_key.py
-        printf 'key = open(os.path.expanduser("~/.ssh/deploy_key_temp")).read().replace("\\n", "").replace("\\r", "").strip()\n' >> /tmp/format_key.py
-        printf 'begin_match = re.search(r"-----BEGIN[^-]+-----", key)\n' >> /tmp/format_key.py
-        printf 'end_match = re.search(r"-----END[^-]+-----", key)\n' >> /tmp/format_key.py
+        printf 'key = open(os.path.expanduser("~/.ssh/deploy_key_temp")).read()\n' >> /tmp/format_key.py
+        printf 'print(f"Key length: {len(key)}", file=sys.stderr)\n' >> /tmp/format_key.py
+        printf 'print(f"First 100 chars: {key[:100]}", file=sys.stderr)\n' >> /tmp/format_key.py
+        printf 'print(f"Last 100 chars: {key[-100:]}", file=sys.stderr)\n' >> /tmp/format_key.py
+        printf '# Remove all whitespace first, then look for markers\n' >> /tmp/format_key.py
+        printf 'key_clean = key.replace("\\n", "").replace("\\r", "").replace(" ", "").strip()\n' >> /tmp/format_key.py
+        printf '# Try multiple patterns for BEGIN marker\n' >> /tmp/format_key.py
+        printf 'begin_patterns = [r"-----BEGIN[^-]+-----", r"-----BEGIN.*?-----", r"BEGIN.*?KEY-----"]\n' >> /tmp/format_key.py
+        printf 'end_patterns = [r"-----END[^-]+-----", r"-----END.*?-----", r"END.*?KEY-----"]\n' >> /tmp/format_key.py
+        printf 'begin_match = None\n' >> /tmp/format_key.py
+        printf 'end_match = None\n' >> /tmp/format_key.py
+        printf 'for pattern in begin_patterns:\n' >> /tmp/format_key.py
+        printf '    begin_match = re.search(pattern, key_clean)\n' >> /tmp/format_key.py
+        printf '    if begin_match:\n' >> /tmp/format_key.py
+        printf '        break\n' >> /tmp/format_key.py
+        printf 'for pattern in end_patterns:\n' >> /tmp/format_key.py
+        printf '    end_match = re.search(pattern, key_clean)\n' >> /tmp/format_key.py
+        printf '    if end_match:\n' >> /tmp/format_key.py
+        printf '        break\n' >> /tmp/format_key.py
         printf 'if not begin_match or not end_match:\n' >> /tmp/format_key.py
         printf '    print("❌ Could not find BEGIN or END markers", file=sys.stderr)\n' >> /tmp/format_key.py
+        printf '    print(f"BEGIN match: {begin_match}", file=sys.stderr)\n' >> /tmp/format_key.py
+        printf '    print(f"END match: {end_match}", file=sys.stderr)\n' >> /tmp/format_key.py
+        printf '    # Try to find in original key too\n' >> /tmp/format_key.py
+        printf '    if "BEGIN" in key and "END" in key:\n' >> /tmp/format_key.py
+        printf '        print("Found BEGIN and END in key, trying alternative extraction", file=sys.stderr)\n' >> /tmp/format_key.py
+        printf '        begin_idx = key.find("-----BEGIN")\n' >> /tmp/format_key.py
+        printf '        end_idx = key.find("-----END")\n' >> /tmp/format_key.py
+        printf '        if begin_idx >= 0 and end_idx > begin_idx:\n' >> /tmp/format_key.py
+        printf '            begin_line = key[begin_idx:key.find("-----", begin_idx+5)+5]\n' >> /tmp/format_key.py
+        printf '            end_line = key[end_idx:key.find("-----", end_idx+5)+5]\n' >> /tmp/format_key.py
+        printf '            base64_content = key[key.find("-----", begin_idx+5)+5:end_idx].replace("\\n", "").replace("\\r", "").replace(" ", "")\n' >> /tmp/format_key.py
+        printf '            formatted_key = begin_line + "\\n"\n' >> /tmp/format_key.py
+        printf '            for i in range(0, len(base64_content), 64):\n' >> /tmp/format_key.py
+        printf '                formatted_key += base64_content[i:i+64] + "\\n"\n' >> /tmp/format_key.py
+        printf '            formatted_key += end_line + "\\n"\n' >> /tmp/format_key.py
+        printf '            open(os.path.expanduser("~/.ssh/deploy_key"), "w").write(formatted_key)\n' >> /tmp/format_key.py
+        printf '            print("✅ SSH key formatted and written (alternative method)")\n' >> /tmp/format_key.py
+        printf '            sys.exit(0)\n' >> /tmp/format_key.py
         printf '    sys.exit(1)\n' >> /tmp/format_key.py
-        printf 'begin_line = key[begin_match.start():begin_match.end()]\n' >> /tmp/format_key.py
-        printf 'base64_content = key[begin_match.end():end_match.start()]\n' >> /tmp/format_key.py
-        printf 'end_line = key[end_match.start():end_match.end()]\n' >> /tmp/format_key.py
+        printf 'begin_line = key_clean[begin_match.start():begin_match.end()]\n' >> /tmp/format_key.py
+        printf 'base64_content = key_clean[begin_match.end():end_match.start()]\n' >> /tmp/format_key.py
+        printf 'end_line = key_clean[end_match.start():end_match.end()]\n' >> /tmp/format_key.py
         printf 'formatted_key = begin_line + "\\n"\n' >> /tmp/format_key.py
         printf 'for i in range(0, len(base64_content), 64):\n' >> /tmp/format_key.py
         printf '    formatted_key += base64_content[i:i+64] + "\\n"\n' >> /tmp/format_key.py
