@@ -1,0 +1,97 @@
+name: Deploy to Production VM
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.9'
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Build frontend
+      env:
+        VITE_API_BASE_URL: http://34.73.5.92/api
+      run: |
+        cd interior
+        npm install
+        npm run build
+    
+    - name: Configure SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        ssh-keyscan -H 34.73.5.92 >> ~/.ssh/known_hosts
+    
+    - name: Deploy Backend
+      run: |
+        cd interior/backend
+        tar -czf backend-deploy.tar.gz \
+          --exclude='venv' \
+          --exclude='__pycache__' \
+          --exclude='*.pyc' \
+          --exclude='.git' \
+          --exclude='db.sqlite3' \
+          --exclude='media' \
+          --exclude='staticfiles' \
+          .
+        
+        scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+          backend-deploy.tar.gz ${{ secrets.VM_USER }}@34.73.5.92:~/backend-deploy.tar.gz
+        
+        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+          ${{ secrets.VM_USER }}@34.73.5.92 << 'ENDSSH'
+          cd ~
+          tar -xzf backend-deploy.tar.gz
+          sudo cp -r * /var/www/interior-app/backend/
+          cd /var/www/interior-app/backend
+          source venv/bin/activate
+          pip install -r requirements.txt --quiet
+          python manage.py migrate --noinput
+          python manage.py collectstatic --noinput
+          sudo chown -R www-data:www-data /var/www/interior-app/backend
+          sudo systemctl restart gunicorn
+          echo "✅ Backend deployed"
+ENDSSH
+    
+    - name: Deploy Frontend
+      run: |
+        cd interior
+        tar -czf frontend-dist.tar.gz -C dist .
+        
+        scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+          frontend-dist.tar.gz ${{ secrets.VM_USER }}@34.73.5.92:~/frontend-dist.tar.gz
+        
+        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+          ${{ secrets.VM_USER }}@34.73.5.92 << 'ENDSSH'
+          cd ~
+          tar -xzf frontend-dist.tar.gz
+          sudo rm -rf /var/www/interior-app/frontend/*
+          sudo cp -r * /var/www/interior-app/frontend/
+          sudo chown -R www-data:www-data /var/www/interior-app/frontend
+          sudo systemctl restart nginx
+          echo "✅ Frontend deployed"
+ENDSSH
+    
+    - name: Verify Deployment
+      run: |
+        sleep 5
+        curl -f http://34.73.5.92/api/health/ || exit 1
+        echo "✅ Deployment verified"
+
