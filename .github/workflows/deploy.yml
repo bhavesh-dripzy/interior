@@ -49,16 +49,52 @@ jobs:
           exit 1
         fi
         
-        # Write SSH key, trimming any leading/trailing whitespace
-        echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' > ~/.ssh/deploy_key
+        # Write SSH key using Python to properly handle formatting
+        python3 << 'PYTHON_SCRIPT'
+import sys
+import re
+
+key = """${{ secrets.VM_SSH_PRIVATE_KEY }}"""
+
+# Remove all newlines first
+key = key.replace('\n', '').replace('\r', '')
+
+# Find BEGIN and END markers
+begin_match = re.search(r'-----BEGIN[^-]+-----', key)
+end_match = re.search(r'-----END[^-]+-----', key)
+
+if not begin_match or not end_match:
+    print("❌ Could not find BEGIN or END markers in key", file=sys.stderr)
+    sys.exit(1)
+
+begin_pos = begin_match.start()
+end_pos = end_match.end()
+
+# Extract parts
+begin_line = key[begin_match.start():begin_match.end()]
+base64_content = key[begin_match.end():end_match.start()]
+end_line = key[end_match.start():end_match.end()]
+
+# Reconstruct with proper line breaks (64 chars per line for base64)
+formatted_key = begin_line + '\n'
+for i in range(0, len(base64_content), 64):
+    formatted_key += base64_content[i:i+64] + '\n'
+formatted_key += end_line + '\n'
+
+# Write to file
+with open('/home/runner/.ssh/deploy_key', 'w') as f:
+    f.write(formatted_key)
+
+print("✅ SSH key formatted and written")
+PYTHON_SCRIPT
+        
         chmod 600 ~/.ssh/deploy_key
         
         # Verify key format
         if ! ssh-keygen -l -f ~/.ssh/deploy_key > /dev/null 2>&1; then
           echo "❌ Invalid SSH key format!"
-          echo "First 100 chars of key:"
-          head -c 100 ~/.ssh/deploy_key
-          echo ""
+          echo "Key file contents (first 10 lines):"
+          head -10 ~/.ssh/deploy_key
           exit 1
         fi
         echo "✅ SSH key format verified"
