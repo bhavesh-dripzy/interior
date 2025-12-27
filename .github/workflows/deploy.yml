@@ -31,21 +31,40 @@ jobs:
         cd interior
         npm install
         npm run build
+        ls -la dist/ || { echo "❌ Frontend build failed - dist folder not found"; exit 1; }
+        echo "✅ Frontend built successfully"
     
     - name: Configure SSH
       run: |
         mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        
+        # Check if secrets are set
+        if [ -z "${{ secrets.VM_SSH_PRIVATE_KEY }}" ]; then
+          echo "❌ VM_SSH_PRIVATE_KEY secret is not set!"
+          exit 1
+        fi
+        if [ -z "${{ secrets.VM_USER }}" ]; then
+          echo "❌ VM_USER secret is not set!"
+          exit 1
+        fi
+        
         echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
         chmod 600 ~/.ssh/deploy_key
-        ssh-keyscan -H 34.73.5.92 >> ~/.ssh/known_hosts
+        ssh-keyscan -H 34.73.5.92 >> ~/.ssh/known_hosts 2>/dev/null || true
         
         # Test SSH connection
-        echo "🔍 Testing SSH connection..."
+        echo "🔍 Testing SSH connection to ${{ secrets.VM_USER }}@34.73.5.92..."
         ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
           ${{ secrets.VM_USER }}@34.73.5.92 'echo "SSH connection successful"' || {
-          echo "❌ SSH connection failed. Check VM_SSH_PRIVATE_KEY and VM_USER secrets."
+          echo "❌ SSH connection failed!"
+          echo "Please verify:"
+          echo "  1. VM_SSH_PRIVATE_KEY secret is set correctly"
+          echo "  2. VM_USER secret is set to: nishkarsh"
+          echo "  3. SSH public key is added to VM's ~/.ssh/authorized_keys"
           exit 1
         }
+        echo "✅ SSH connection successful"
     
     - name: Deploy Backend
       run: |
@@ -83,7 +102,12 @@ jobs:
     - name: Deploy Frontend
       run: |
         cd interior
+        if [ ! -d "dist" ]; then
+          echo "❌ dist folder not found. Build may have failed."
+          exit 1
+        fi
         tar -czf frontend-dist.tar.gz -C dist .
+        echo "📦 Frontend archive created: $(ls -lh frontend-dist.tar.gz)"
         
         echo "📤 Uploading frontend files..."
         scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
