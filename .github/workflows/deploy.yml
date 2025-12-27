@@ -55,20 +55,7 @@ jobs:
         scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
           backend-deploy.tar.gz ${{ secrets.VM_USER }}@34.73.5.92:~/backend-deploy.tar.gz
         
-        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-          ${{ secrets.VM_USER }}@34.73.5.92 << 'ENDSSH'
-          cd ~
-          tar -xzf backend-deploy.tar.gz
-          sudo cp -r * /var/www/interior-app/backend/
-          cd /var/www/interior-app/backend
-          source venv/bin/activate
-          pip install -r requirements.txt --quiet
-          python manage.py migrate --noinput
-          python manage.py collectstatic --noinput
-          sudo chown -R www-data:www-data /var/www/interior-app/backend
-          sudo systemctl restart gunicorn
-          echo "✅ Backend deployed"
-ENDSSH
+        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.VM_USER }}@34.73.5.92 'cd ~ && tar -xzf backend-deploy.tar.gz && sudo cp -r * /var/www/interior-app/backend/ && cd /var/www/interior-app/backend && source venv/bin/activate && pip install -r requirements.txt --quiet && python manage.py migrate --noinput && python manage.py collectstatic --noinput && sudo chown -R www-data:www-data /var/www/interior-app/backend && sudo systemctl restart gunicorn && echo "✅ Backend deployed"'
     
     - name: Deploy Frontend
       run: |
@@ -78,16 +65,7 @@ ENDSSH
         scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
           frontend-dist.tar.gz ${{ secrets.VM_USER }}@34.73.5.92:~/frontend-dist.tar.gz
         
-        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-          ${{ secrets.VM_USER }}@34.73.5.92 << 'ENDSSH'
-          cd ~
-          tar -xzf frontend-dist.tar.gz
-          sudo rm -rf /var/www/interior-app/frontend/*
-          sudo cp -r * /var/www/interior-app/frontend/
-          sudo chown -R www-data:www-data /var/www/interior-app/frontend
-          sudo systemctl restart nginx
-          echo "✅ Frontend deployed"
-ENDSSH
+        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.VM_USER }}@34.73.5.92 'cd ~ && tar -xzf frontend-dist.tar.gz && sudo rm -rf /var/www/interior-app/frontend/* && sudo cp -r * /var/www/interior-app/frontend/ && sudo chown -R www-data:www-data /var/www/interior-app/frontend && sudo systemctl restart nginx && echo "✅ Frontend deployed"'
     
     - name: Verify Deployment
       run: |
