@@ -22,7 +22,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-this-in-production'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')]
+ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,houzzat.in,www.houzzat.in,34.73.5.92').split(',')]
 
 
 # Application definition
@@ -175,6 +175,10 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://34.73.5.92",
     "http://34.73.5.92:80",
+    "https://houzzat.in",
+    "https://www.houzzat.in",
+    "http://houzzat.in",  # HTTP will redirect to HTTPS
+    "http://www.houzzat.in",  # HTTP will redirect to HTTPS
 ]
 
 # Allow all origins in production if needed (less secure, but flexible)
