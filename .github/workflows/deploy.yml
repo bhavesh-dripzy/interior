@@ -49,16 +49,20 @@ jobs:
           exit 1
         fi
         
-        # Write SSH key using Python to properly handle formatting
-        python3 -c "
+        # Write SSH key and fix formatting (handle single-line paste from GitHub Secrets)
+        echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key_temp
+        
+        # Use Python to properly format the key
+        python3 << 'EOF'
 import sys
 import re
 import os
 
-key = '''${{ secrets.VM_SSH_PRIVATE_KEY }}'''
+with open(os.path.expanduser('~/.ssh/deploy_key_temp'), 'r') as f:
+    key = f.read()
 
 # Remove all newlines first
-key = key.replace('\n', '').replace('\r', '')
+key = key.replace('\n', '').replace('\r', '').strip()
 
 # Find BEGIN and END markers
 begin_match = re.search(r'-----BEGIN[^-]+-----', key)
@@ -84,7 +88,7 @@ with open(os.path.expanduser('~/.ssh/deploy_key'), 'w') as f:
     f.write(formatted_key)
 
 print('✅ SSH key formatted and written')
-"
+EOF
         
         chmod 600 ~/.ssh/deploy_key
         
