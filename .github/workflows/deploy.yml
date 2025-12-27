@@ -50,11 +50,12 @@ jobs:
         fi
         
         # Write SSH key using Python to properly handle formatting
-        python3 << 'PYTHON_SCRIPT'
+        python3 -c "
 import sys
 import re
+import os
 
-key = """${{ secrets.VM_SSH_PRIVATE_KEY }}"""
+key = '''${{ secrets.VM_SSH_PRIVATE_KEY }}'''
 
 # Remove all newlines first
 key = key.replace('\n', '').replace('\r', '')
@@ -64,11 +65,8 @@ begin_match = re.search(r'-----BEGIN[^-]+-----', key)
 end_match = re.search(r'-----END[^-]+-----', key)
 
 if not begin_match or not end_match:
-    print("❌ Could not find BEGIN or END markers in key", file=sys.stderr)
+    print('❌ Could not find BEGIN or END markers in key', file=sys.stderr)
     sys.exit(1)
-
-begin_pos = begin_match.start()
-end_pos = end_match.end()
 
 # Extract parts
 begin_line = key[begin_match.start():begin_match.end()]
@@ -82,11 +80,11 @@ for i in range(0, len(base64_content), 64):
 formatted_key += end_line + '\n'
 
 # Write to file
-with open('/home/runner/.ssh/deploy_key', 'w') as f:
+with open(os.path.expanduser('~/.ssh/deploy_key'), 'w') as f:
     f.write(formatted_key)
 
-print("✅ SSH key formatted and written")
-PYTHON_SCRIPT
+print('✅ SSH key formatted and written')
+"
         
         chmod 600 ~/.ssh/deploy_key
         
