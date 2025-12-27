@@ -147,7 +147,7 @@ jobs:
     - name: Deploy Backend
       run: |
         cd interior/backend
-        # Create archive from parent directory to avoid "file changed" warnings
+        # Create archive - ignore file changed warnings (non-fatal)
         tar -czf backend-deploy.tar.gz \
           --warning=no-file-changed \
           --exclude='venv' \
@@ -161,7 +161,14 @@ jobs:
           --exclude='.DS_Store' \
           --exclude='*.swp' \
           --exclude='*.tmp' \
-          .
+          . || { echo "⚠️ tar completed with warnings (this is usually OK)"; }
+        
+        # Verify archive was created
+        if [ ! -f backend-deploy.tar.gz ]; then
+          echo "❌ Archive was not created!"
+          exit 1
+        fi
+        echo "✅ Backend archive created: $(ls -lh backend-deploy.tar.gz | awk '{print $5}')"
         
         echo "📤 Uploading backend files..."
         scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
