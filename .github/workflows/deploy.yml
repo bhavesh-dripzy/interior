@@ -49,14 +49,16 @@ jobs:
           exit 1
         fi
         
-        # Write SSH key, ensuring proper formatting
-        echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+        # Write SSH key, trimming any leading/trailing whitespace
+        echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' > ~/.ssh/deploy_key
         chmod 600 ~/.ssh/deploy_key
         
         # Verify key format
         if ! ssh-keygen -l -f ~/.ssh/deploy_key > /dev/null 2>&1; then
           echo "❌ Invalid SSH key format!"
-          echo "Please ensure the key includes BEGIN and END lines and has no extra spaces."
+          echo "First 100 chars of key:"
+          head -c 100 ~/.ssh/deploy_key
+          echo ""
           exit 1
         fi
         echo "✅ SSH key format verified"
