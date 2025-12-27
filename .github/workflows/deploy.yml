@@ -52,45 +52,25 @@ jobs:
         # Write SSH key and fix formatting (handle single-line paste from GitHub Secrets)
         echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key_temp
         
-        # Use Python to properly format the key - write script to file first
-        cat > /tmp/format_key.py << 'PYEOF'
-import sys
-import re
-import os
-
-with open(os.path.expanduser('~/.ssh/deploy_key_temp'), 'r') as f:
-    key = f.read()
-
-# Remove all newlines first
-key = key.replace('\n', '').replace('\r', '').strip()
-
-# Find BEGIN and END markers
+        # Use Python to properly format the key
+        python3 -c "
+import sys, re, os
+key = open(os.path.expanduser('~/.ssh/deploy_key_temp')).read().replace('\n', '').replace('\r', '').strip()
 begin_match = re.search(r'-----BEGIN[^-]+-----', key)
 end_match = re.search(r'-----END[^-]+-----', key)
-
 if not begin_match or not end_match:
-    print('❌ Could not find BEGIN or END markers in key', file=sys.stderr)
+    print('❌ Could not find BEGIN or END markers', file=sys.stderr)
     sys.exit(1)
-
-# Extract parts
 begin_line = key[begin_match.start():begin_match.end()]
 base64_content = key[begin_match.end():end_match.start()]
 end_line = key[end_match.start():end_match.end()]
-
-# Reconstruct with proper line breaks (64 chars per line for base64)
 formatted_key = begin_line + '\n'
 for i in range(0, len(base64_content), 64):
     formatted_key += base64_content[i:i+64] + '\n'
 formatted_key += end_line + '\n'
-
-# Write to file
-with open(os.path.expanduser('~/.ssh/deploy_key'), 'w') as f:
-    f.write(formatted_key)
-
+open(os.path.expanduser('~/.ssh/deploy_key'), 'w').write(formatted_key)
 print('✅ SSH key formatted and written')
-PYEOF
-        
-        python3 /tmp/format_key.py
+"
         
         chmod 600 ~/.ssh/deploy_key
         
