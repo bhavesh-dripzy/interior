@@ -38,6 +38,14 @@ jobs:
         echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
         chmod 600 ~/.ssh/deploy_key
         ssh-keyscan -H 34.73.5.92 >> ~/.ssh/known_hosts
+        
+        # Test SSH connection
+        echo "🔍 Testing SSH connection..."
+        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+          ${{ secrets.VM_USER }}@34.73.5.92 'echo "SSH connection successful"' || {
+          echo "❌ SSH connection failed. Check VM_SSH_PRIVATE_KEY and VM_USER secrets."
+          exit 1
+        }
     
     - name: Deploy Backend
       run: |
@@ -52,20 +60,46 @@ jobs:
           --exclude='staticfiles' \
           .
         
+        echo "📤 Uploading backend files..."
         scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-          backend-deploy.tar.gz ${{ secrets.VM_USER }}@34.73.5.92:~/backend-deploy.tar.gz
+          backend-deploy.tar.gz ${{ secrets.VM_USER }}@34.73.5.92:~/backend-deploy.tar.gz || exit 1
         
-        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.VM_USER }}@34.73.5.92 'cd ~ && tar -xzf backend-deploy.tar.gz && sudo cp -r * /var/www/interior-app/backend/ && cd /var/www/interior-app/backend && source venv/bin/activate && pip install -r requirements.txt --quiet && python manage.py migrate --noinput && python manage.py collectstatic --noinput && sudo chown -R www-data:www-data /var/www/interior-app/backend && sudo systemctl restart gunicorn && echo "✅ Backend deployed"'
+        echo "🔧 Deploying backend on VM..."
+        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.VM_USER }}@34.73.5.92 bash -c "
+          set -e
+          cd ~
+          tar -xzf backend-deploy.tar.gz
+          sudo cp -r * /var/www/interior-app/backend/
+          cd /var/www/interior-app/backend
+          source venv/bin/activate
+          pip install -r requirements.txt --quiet
+          python manage.py migrate --noinput
+          python manage.py collectstatic --noinput
+          sudo chown -R www-data:www-data /var/www/interior-app/backend
+          sudo systemctl restart gunicorn
+          echo '✅ Backend deployed'
+        " || exit 1
     
     - name: Deploy Frontend
       run: |
         cd interior
         tar -czf frontend-dist.tar.gz -C dist .
         
+        echo "📤 Uploading frontend files..."
         scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-          frontend-dist.tar.gz ${{ secrets.VM_USER }}@34.73.5.92:~/frontend-dist.tar.gz
+          frontend-dist.tar.gz ${{ secrets.VM_USER }}@34.73.5.92:~/frontend-dist.tar.gz || exit 1
         
-        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.VM_USER }}@34.73.5.92 'cd ~ && tar -xzf frontend-dist.tar.gz && sudo rm -rf /var/www/interior-app/frontend/* && sudo cp -r * /var/www/interior-app/frontend/ && sudo chown -R www-data:www-data /var/www/interior-app/frontend && sudo systemctl restart nginx && echo "✅ Frontend deployed"'
+        echo "🔧 Deploying frontend on VM..."
+        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.VM_USER }}@34.73.5.92 bash -c "
+          set -e
+          cd ~
+          tar -xzf frontend-dist.tar.gz
+          sudo rm -rf /var/www/interior-app/frontend/*
+          sudo cp -r * /var/www/interior-app/frontend/
+          sudo chown -R www-data:www-data /var/www/interior-app/frontend
+          sudo systemctl restart nginx
+          echo '✅ Frontend deployed'
+        " || exit 1
     
     - name: Verify Deployment
       run: |
