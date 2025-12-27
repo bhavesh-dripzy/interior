@@ -49,8 +49,17 @@ jobs:
           exit 1
         fi
         
+        # Write SSH key, ensuring proper formatting
         echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
         chmod 600 ~/.ssh/deploy_key
+        
+        # Verify key format
+        if ! ssh-keygen -l -f ~/.ssh/deploy_key > /dev/null 2>&1; then
+          echo "❌ Invalid SSH key format!"
+          echo "Please ensure the key includes BEGIN and END lines and has no extra spaces."
+          exit 1
+        fi
+        echo "✅ SSH key format verified"
         ssh-keyscan -H 34.73.5.92 >> ~/.ssh/known_hosts 2>/dev/null || true
         
         # Test SSH connection
