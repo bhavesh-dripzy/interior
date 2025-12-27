@@ -52,6 +52,13 @@ jobs:
         # Write SSH key and fix formatting (handle single-line paste from GitHub Secrets)
         echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key_temp
         
+        # Verify key file was written and has content
+        if [ ! -s ~/.ssh/deploy_key_temp ]; then
+          echo "❌ SSH key file is empty or was not written!"
+          exit 1
+        fi
+        echo "✅ SSH key file written (size: $(wc -c < ~/.ssh/deploy_key_temp) bytes)"
+        
         # Create Python script to format the key (more robust pattern matching)
         printf 'import sys, re, os\n' > /tmp/format_key.py
         printf 'key = open(os.path.expanduser("~/.ssh/deploy_key_temp")).read()\n' >> /tmp/format_key.py
